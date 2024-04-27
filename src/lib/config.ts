@@ -1,0 +1,1 @@
+export const MAX_QUEUE_COUNT = 10

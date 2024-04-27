@@ -2,16 +2,23 @@
 
 
 export const load = async () => {
-    const schedule:Schedule = {
-        "2024/04/27":5
-    }
+    
     return {
-        schedule
+        queueCount:7
     }
 };
 
 export const actions = {
-    default:async()=>{
+    default:async({request})=>{
+        const data = await request.formData();
+		const email = data.get('email');
+		const password = data.get('password');
+
+        // queue count
+        const queueCount = 7
+        if(queueCount>10){
+
+        }
 
     }
 };
