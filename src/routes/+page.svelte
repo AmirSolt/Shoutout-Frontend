@@ -25,7 +25,7 @@
 		</div>
 	{/if}
 
-	{#if queueCount >= MAX_QUEUE_COUNT}
+	{#if queueCount ?? 0 >= MAX_QUEUE_COUNT}
 		<div class="card mb-4 p-4 variant-filled-warning space-y-2">
 			<h1 class="text-xl font-bold">Queue is Full: {queueCount}/{MAX_QUEUE_COUNT}</h1>
 			<p>We're currently at max capacity, please submit a video request later.</p>

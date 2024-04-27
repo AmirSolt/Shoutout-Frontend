@@ -1,12 +1,24 @@
 import { z } from "zod";
 import { stripe } from "$lib/stripe.server";
 import { OrderStatus } from "../lib/config";
-
+import { pb } from "$lib/pocketbase.server";
+import { fail, redirect } from "@sveltejs/kit";
+import Stripe from "stripe";
+import {PUBLIC_DOMAIN} from '$env/static/public';
 
 
 export const load = async () => {
+
+    let queueCount = 0
+    try{
+        queueCount = await getQueueCount()
+    } catch(e){
+        return fail(500,{
+            errorMessage:e,
+        })
+    }
     return {
-        queueCount:7
+        queueCount:queueCount
     }
 };
 
@@ -21,10 +33,11 @@ const VideoRequestSchema = z.object({
 export const actions = {
     default:async({request})=>{
         const data = await request.formData();
-		const message = data.get('message');
-		const priceID = data.get('priceID');
+		const message = data.get('message') as string;
+		const images = data.getAll('images') as File[];
+		const priceID = data.get('priceID') as string;
 
-
+        // Validation
         const validationResponse = VideoRequestSchema.safeParse({
 			message,
 			priceID,
@@ -36,29 +49,65 @@ export const actions = {
 			})
         }
 
-        // queue count
-        const queueCount = 7
+        // Queue Count
+        let queueCount = 0
+        try{
+            queueCount = await getQueueCount()
+        } catch(e){
+            return fail(500,{
+                errorMessage:e,
+            })
+        }
         if(queueCount>10){
-            throw fail(400, {
-                message: "Could not process this order. Video queue is already full."
+            return fail(400, {
+                errorMessage: "We are at max capacity. Please try again later!"
+            })
+        }
+
+        //  Create order
+        try{
+            await pb.collection('orders').create({
+                "status":OrderStatus.payment_pending,
+                "message":message,
+                "images":images,
+            });
+        } catch(e){
+            return fail(500,{
+                errorMessage:e,
             })
         }
 
 
-        // create video request
-        OrderStatus.payment_pending
-
-
-        await checkout(priceID)
+        // create checkout
+        let checkoutSession:Stripe.Checkout.Session|undefined
+        try{
+            checkoutSession = await createCheckoutSession(priceID)
+        } catch(e){
+            return fail(500,{
+                errorMessage:e,
+            })
+        }
+        throw redirect(302, checkoutSession.url!)
     }
 };
 
 
 
 
+async function getQueueCount(){
+    let queueCount = 0
+    try{
+        const result = await pb.collection('orders').getFullList({
+            filter: `status = ${OrderStatus.order_waiting}`
+        });
+        queueCount = result.length
+    } catch(e){
+        throw Error("Something went wrong. Please try again later!")
+    }
+    return queueCount
+}
 
-
-async function checkout(priceID:string){  
+async function createCheckoutSession(priceID:string){  
     const checkoutSession = await stripe.checkout.sessions.create({
         line_items: [
           {
@@ -71,5 +120,10 @@ async function checkout(priceID:string){
         cancel_url: `https://${PUBLIC_DOMAIN}/payment/fail`,
     });
   
-    throw redirect(302, checkoutSession.url)
+    if(checkoutSession.url==null){
+        throw Error("Something went wrong. Please try again later!")
+    }
+
+    
+    return checkoutSession
 }
