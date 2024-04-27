@@ -54,16 +54,11 @@
 			<input class="checkbox" type="checkbox" required />
 			<p>I understand any inappropriate image/text can be removed or modified.</p>
 		</label>
-	</div>
 
-	<div class="card mb-4 p-4 space-y-2">
-		<h1 class="text-xl font-bold">Payment</h1>
-		<p class="text-lg font-medium">Cost: $20 (USD)</p>
+		<button class="btn variant-filled-primary w-52">
+			<p>$20 (USD)</p>
+		</button>
 	</div>
-
-	<button class="btn variant-filled-primary w-52">
-		<p>Submit</p>
-	</button>
 </form>
 <br />
 <br />
