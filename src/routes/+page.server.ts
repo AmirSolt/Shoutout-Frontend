@@ -16,10 +16,10 @@ export const load = async () => {
     try{
         queueCount = await getQueueCount()
     } catch(e){
-       
-        // return fail(500,{
-        //     errorMessage:e,
-        // })
+        const err = e as Error
+        return fail(500,{
+            errorMessage:err.message,
+        })
     }
     return {
         queueCount:queueCount,
@@ -40,7 +40,7 @@ export const actions = {
         const data = await request.formData();
 		const message = data.get('message') as string;
 		const images = data.getAll('images') as File[];
-
+        
         // Validation
         const validationResponse = VideoRequestSchema.safeParse({
 			message,
@@ -57,8 +57,9 @@ export const actions = {
         try{
             queueCount = await getQueueCount()
         } catch(e){
+            const err = e as Error
             return fail(500,{
-                errorMessage:e,
+                errorMessage:err.message,
             })
         }
         if(queueCount>MAX_CAPACITY){
@@ -69,14 +70,20 @@ export const actions = {
 
         //  Create order
         try{
-            await pb.collection('orders').create({
-                "status":OrderStatus.payment_pending,
-                "message":message,
-                "images":images,
-            });
+
+            let pbData = new FormData();
+            pbData.append("status", OrderStatus.payment_pending);
+            pbData.append("message", message);
+            pbData.append("images", images[0])
+            // images.forEach(image=>pbData.append("images", image))
+
+
+            await pb.collection('orders').create(pbData);
         } catch(e){
+            const err = e as ServerClientResponseError
+            console.log(err)
             return fail(500,{
-                errorMessage:e,
+                errorMessage:err.response.message,
             })
         }
 
@@ -87,7 +94,7 @@ export const actions = {
             checkoutSession = await createCheckoutSession(COST_AMOUNT)
         } catch(e){
             return fail(500,{
-                errorMessage:e,
+                errorMessage:"Something went wrong. Please try again later!",
             })
         }
         throw redirect(302, checkoutSession.url!)
@@ -101,13 +108,13 @@ async function getQueueCount(){
     let queueCount = 0
     try{
         const result = await pb.collection('orders').getFullList({
-            filter: `status = ${OrderStatus.order_waiting}`
+            filter: `status = "${OrderStatus.order_waiting}"`
         });
 
         queueCount = result.length
     } catch(e){
-        console.log(e)
-        throw Error("Something went wrong. Please try again later!")
+        const err = e as ServerClientResponseError
+        throw new Error("Something went wrong. Please try again later!")
     }
     return queueCount
 }
@@ -132,7 +139,7 @@ async function createCheckoutSession(costAmount:number){
     });
   
     if(checkoutSession.url==null){
-        throw Error("Something went wrong. Please try again later!")
+        throw new Error("Something went wrong. Please try again later!")
     }
 
     

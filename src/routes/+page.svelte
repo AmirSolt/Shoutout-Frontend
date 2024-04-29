@@ -50,7 +50,14 @@
 		</label>
 		<label class="label">
 			<span>Images</span>
-			<input class="input" type="file" name="images" multiple required />
+			<input
+				class="input"
+				type="file"
+				name="images"
+				multiple
+				required
+				accept="image/png, image/jpeg, image/jpg"
+			/>
 		</label>
 
 		<label class="flex items-center space-x-2">
