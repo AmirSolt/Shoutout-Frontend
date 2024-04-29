@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { MAX_QUEUE_COUNT } from '$lib/config';
 	import { Avatar } from '@skeletonlabs/skeleton';
 	export let data;
-	const { queueCount } = data;
+	const { queueCount, costAmount, maxCapacity } = data;
 </script>
+
+<h1>
+	queueCount: {queueCount}
+</h1>
 
 <form class="felx flex-col justify-center items-center p-4" method="post">
 	<div class="card mb-4 p-4 space-y-2">
@@ -25,9 +28,9 @@
 		</div>
 	{/if}
 
-	{#if queueCount ?? 0 >= MAX_QUEUE_COUNT}
+	{#if queueCount > maxCapacity}
 		<div class="card mb-4 p-4 variant-filled-warning space-y-2">
-			<h1 class="text-xl font-bold">Queue is Full: {queueCount}/{MAX_QUEUE_COUNT}</h1>
+			<h1 class="text-xl font-bold">Queue is Full: {queueCount}/{maxCapacity}</h1>
 			<p>We're currently at max capacity, please submit a video request later.</p>
 		</div>
 	{/if}
@@ -36,10 +39,10 @@
 		<h1 class="text-xl font-bold">Message</h1>
 		<label class="label">
 			<span>Message</span>
-			<input
-				class="input"
-				type="text"
+			<textarea
+				class="textarea"
 				name="message"
+				rows="4"
 				maxlength="120"
 				placeholder="Happy birthday John, ... from Jane."
 				required
@@ -56,7 +59,7 @@
 		</label>
 
 		<button class="btn variant-filled-primary w-52">
-			<p>$20 (USD)</p>
+			<p>${costAmount} (USD)</p>
 		</button>
 	</div>
 </form>

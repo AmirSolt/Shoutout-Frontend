@@ -6,4 +6,7 @@ declare namespace App {
 	// interface PageData {}
 	// interface Error {}
 	// interface Platform {}
+	interface Form {
+		errorMessage: string|null|undefined;
+	}z	
 }

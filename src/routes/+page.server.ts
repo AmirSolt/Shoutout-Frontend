@@ -6,6 +6,9 @@ import { fail, redirect } from "@sveltejs/kit";
 import Stripe from "stripe";
 import {PUBLIC_DOMAIN} from '$env/static/public';
 
+const COST_AMOUNT = 8.99
+const MAX_CAPACITY = 20
+
 
 export const load = async () => {
 
@@ -13,19 +16,21 @@ export const load = async () => {
     try{
         queueCount = await getQueueCount()
     } catch(e){
-        return fail(500,{
-            errorMessage:e,
-        })
+       
+        // return fail(500,{
+        //     errorMessage:e,
+        // })
     }
     return {
-        queueCount:queueCount
+        queueCount:queueCount,
+        costAmount:COST_AMOUNT,
+        maxCapacity:MAX_CAPACITY,
     }
 };
 
 
 const VideoRequestSchema = z.object({
-	message: z.string().min(1),
-	priceID: z.string().min(1),
+	message: z.string().min(1).max(200),
 });
 
 
@@ -35,12 +40,10 @@ export const actions = {
         const data = await request.formData();
 		const message = data.get('message') as string;
 		const images = data.getAll('images') as File[];
-		const priceID = data.get('priceID') as string;
 
         // Validation
         const validationResponse = VideoRequestSchema.safeParse({
 			message,
-			priceID,
 		})
         if ( !validationResponse.success){
             let issues = validationResponse.error.issues
@@ -58,7 +61,7 @@ export const actions = {
                 errorMessage:e,
             })
         }
-        if(queueCount>10){
+        if(queueCount>MAX_CAPACITY){
             return fail(400, {
                 errorMessage: "We are at max capacity. Please try again later!"
             })
@@ -81,7 +84,7 @@ export const actions = {
         // create checkout
         let checkoutSession:Stripe.Checkout.Session|undefined
         try{
-            checkoutSession = await createCheckoutSession(priceID)
+            checkoutSession = await createCheckoutSession(COST_AMOUNT)
         } catch(e){
             return fail(500,{
                 errorMessage:e,
@@ -100,21 +103,29 @@ async function getQueueCount(){
         const result = await pb.collection('orders').getFullList({
             filter: `status = ${OrderStatus.order_waiting}`
         });
+
         queueCount = result.length
     } catch(e){
+        console.log(e)
         throw Error("Something went wrong. Please try again later!")
     }
     return queueCount
 }
 
-async function createCheckoutSession(priceID:string){  
+async function createCheckoutSession(costAmount:number){  
     const checkoutSession = await stripe.checkout.sessions.create({
         line_items: [
-          {
-            price:priceID,
-            quantity: 1,
-          },
-        ],
+            {
+              price_data:{
+                currency:"USD",
+                product_data:{
+                  name:"Juju"
+                },
+                unit_amount:costAmount*100,
+              },
+              quantity: 1,
+            },
+          ],
         mode: 'payment',
         success_url: `https://${PUBLIC_DOMAIN}/payment/success`,
         cancel_url: `https://${PUBLIC_DOMAIN}/payment/fail`,

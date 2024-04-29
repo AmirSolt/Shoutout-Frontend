@@ -1,4 +1,3 @@
-export const MAX_QUEUE_COUNT = 10
 
 export enum OrderStatus {
     payment_pending = "payment_pending",
