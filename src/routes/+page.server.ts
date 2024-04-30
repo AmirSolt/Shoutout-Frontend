@@ -5,80 +5,96 @@ import { pb } from "$lib/pocketbase.server";
 import { fail, redirect } from "@sveltejs/kit";
 import Stripe from "stripe";
 import {PUBLIC_DOMAIN} from '$env/static/public';
+import {PRIVATE_SERVER_URL} from '$env/static/private';
 
-const COST_AMOUNT = 8.99
-const MAX_CAPACITY = 20
+
+
+
+const PRODUCTS:Product[] = [
+    {
+        id:"p_0",
+        name:"Public Video",
+        thumb_url:"https://static.vecteezy.com/system/resources/previews/003/337/584/non_2x/default-avatar-photo-placeholder-profile-icon-vector.jpg",
+        description:"A video made for you",
+        price:10,
+        currency:"USD",
+        queueCount:0,
+        queueCountMax:3,
+    },
+    {
+        id:"p_1",
+        name:"Personal Video",
+        thumb_url:"https://static.vecteezy.com/system/resources/previews/003/337/584/non_2x/default-avatar-photo-placeholder-profile-icon-vector.jpg",
+        description:"Personal video sent to you you can upload anywhere",
+        price:50,
+        currency:"USD",
+        queueCount:0,
+        queueCountMax:20,
+    }
+]
+
 
 
 export const load = async () => {
-
-    let queueCount = 0
+    let products:Product[] = [...PRODUCTS]
     try{
-        queueCount = await getQueueCount()
+        products = await updateProductsQueue(products)
     } catch(e){
-        const err = e as Error
-        return fail(500,{
-            errorMessage:err.message,
-        })
+        // const err = e as Error
+        // return fail(500,{
+        //     errorMessage:err.message,
+        // })
     }
+
     return {
-        queueCount:queueCount,
-        costAmount:COST_AMOUNT,
-        maxCapacity:MAX_CAPACITY,
+        products
     }
 };
 
 
-const VideoRequestSchema = z.object({
-	message: z.string().min(1).max(200),
-});
 
 
 
 export const actions = {
     default:async({request})=>{
         const data = await request.formData();
-		const message = data.get('message') as string;
-		const images = data.getAll('images') as File[];
-        
-        // Validation
-        const validationResponse = VideoRequestSchema.safeParse({
-			message,
-		})
-        if ( !validationResponse.success){
-            let issues = validationResponse.error.issues
-			return fail(400, {
-				errorMessage: issues.length == 0 ? "Unkown issue" : issues[0].message
-			})
-        }
-
+        const productID = data.get("product_id") as string
+  
+        // =====================
         // Queue Count
-        let queueCount = 0
+        let products:Product[] = [...PRODUCTS]
         try{
-            queueCount = await getQueueCount()
+            products = await updateProductsQueue(products)
         } catch(e){
             const err = e as Error
             return fail(500,{
                 errorMessage:err.message,
             })
         }
-        if(queueCount>MAX_CAPACITY){
+        const prodIndex = products.findIndex(prod=>prod.id==productID)
+        if(products[prodIndex].queueCount>products[prodIndex].queueCountMax){
             return fail(400, {
                 errorMessage: "We are at max capacity. Please try again later!"
             })
         }
 
-        //  Create order
+        // =====================
+        // create checkout
+        let checkoutSession:Stripe.Checkout.Session|undefined
         try{
+            checkoutSession = await createCheckoutSession(products[prodIndex])
+        } catch(e){
+            return fail(500,{
+                errorMessage:"Something went wrong. Please try again later!",
+            })
+        }
 
-            let pbData = new FormData();
-            pbData.append("status", OrderStatus.payment_pending);
-            pbData.append("message", message);
-            pbData.append("images", images[0])
-            // images.forEach(image=>pbData.append("images", image))
-
-
-            await pb.collection('orders').create(pbData);
+        // =====================
+        // submit order
+        data.append("status", OrderStatus.payment_pending);
+        data.append("checkout_id", checkoutSession.id);
+       try{
+            await pb.collection('orders').create(data);
         } catch(e){
             const err = e as ServerClientResponseError
             console.log(err)
@@ -87,31 +103,38 @@ export const actions = {
             })
         }
 
-
-        // create checkout
-        let checkoutSession:Stripe.Checkout.Session|undefined
-        try{
-            checkoutSession = await createCheckoutSession(COST_AMOUNT)
-        } catch(e){
-            return fail(500,{
-                errorMessage:"Something went wrong. Please try again later!",
-            })
-        }
+        // =====================
         throw redirect(302, checkoutSession.url!)
     }
 };
 
 
+async function updateProductsQueue(products:Product[]):Promise<Product[]>{
+    
+    let queueCount:QueueCount = {}
+    queueCount = await getQueueCount()
+    for(const [productID, value] of Object.entries(queueCount)){
+        const prodIndex = products.findIndex(prod=>prod.id==productID)
+        products[prodIndex].queueCount = value
+    }
+    return products
+}
 
-
-async function getQueueCount(){
-    let queueCount = 0
+async function getQueueCount():Promise<QueueCount>{
+    let queueCount:QueueCount = {}
     try{
-        const result = await pb.collection('orders').getFullList({
+        const orders:Order[] = await pb.collection('orders').getFullList({
             filter: `status = "${OrderStatus.order_waiting}"`
         });
+        
+        orders.forEach(order=>{
+            if(order.tierID in queueCount){
+                queueCount[order.tierID]++
+            } else{
+                queueCount[order.tierID] = 1
+            }
+        })
 
-        queueCount = result.length
     } catch(e){
         const err = e as ServerClientResponseError
         throw new Error("Something went wrong. Please try again later!")
@@ -119,23 +142,23 @@ async function getQueueCount(){
     return queueCount
 }
 
-async function createCheckoutSession(costAmount:number){  
+async function createCheckoutSession(product:Product){  
     const checkoutSession = await stripe.checkout.sessions.create({
         line_items: [
             {
               price_data:{
-                currency:"USD",
+                currency:product.currency,
                 product_data:{
-                  name:"Juju"
+                  name:product.name
                 },
-                unit_amount:costAmount*100,
+                unit_amount:product.price*100,
               },
               quantity: 1,
             },
           ],
         mode: 'payment',
         success_url: `https://${PUBLIC_DOMAIN}/payment/success`,
-        cancel_url: `https://${PUBLIC_DOMAIN}/payment/fail`,
+        cancel_url: `https://${PUBLIC_DOMAIN}/`,
     });
   
     if(checkoutSession.url==null){
@@ -145,3 +168,4 @@ async function createCheckoutSession(costAmount:number){
     
     return checkoutSession
 }
+

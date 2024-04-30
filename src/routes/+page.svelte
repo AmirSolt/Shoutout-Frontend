@@ -1,15 +1,23 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { Avatar } from '@skeletonlabs/skeleton';
+	import Product from './Product.svelte';
+	import { error } from '@sveltejs/kit';
 	export let data;
-	const { queueCount, costAmount, maxCapacity } = data;
+	let { products } = data;
+
+	if (products == null) {
+		throw error(500, 'Something went wrong!');
+	}
+
+	let selectedProductID = products[0].id;
 </script>
 
-<h1>
-	queueCount: {queueCount}
-</h1>
-
-<form class="felx flex-col justify-center items-center p-4" method="post">
+<form
+	class="felx flex-col justify-center items-center p-4"
+	method="post"
+	enctype="multipart/form-data"
+>
 	<div class="card mb-4 p-4 space-y-2">
 		<div class="flex flex-row justify-start items-center gap-2">
 			<Avatar
@@ -28,17 +36,21 @@
 		</div>
 	{/if}
 
-	{#if queueCount > maxCapacity}
+	{#if products.every((product) => product.queueCount > product.queueCountMax)}
 		<div class="card mb-4 p-4 variant-filled-warning space-y-2">
-			<h1 class="text-xl font-bold">Queue is Full: {queueCount}/{maxCapacity}</h1>
+			<h1 class="text-xl font-bold">Queue is Full</h1>
 			<p>We're currently at max capacity, please submit a video request later.</p>
 		</div>
 	{/if}
 
 	<div class="card mb-4 p-4 space-y-4">
-		<h1 class="text-xl font-bold">Message</h1>
 		<label class="label">
-			<span>Message</span>
+			<span class="text-xl font-bold">Email</span>
+			<input class="input" type="email" name="email" placeholder="example@email.com" required />
+		</label>
+
+		<label class="label">
+			<span class="text-xl font-bold">Message</span>
 			<textarea
 				class="textarea"
 				name="message"
@@ -49,7 +61,7 @@
 			/>
 		</label>
 		<label class="label">
-			<span>Images</span>
+			<span class="text-xl font-bold">Images</span>
 			<input
 				class="input"
 				type="file"
@@ -60,13 +72,22 @@
 			/>
 		</label>
 
-		<label class="flex items-center space-x-2">
+		<label class="label">
+			<span class="text-xl font-bold">Tiers</span>
+			<div class="flex flex-row justify-center items-center">
+				<Product product={products[0]} bind:selectedProductID />
+				<Product product={products[1]} bind:selectedProductID />
+			</div>
+			<input type="hidden" name="product_id" value={selectedProductID} />
+		</label>
+
+		<label class="flex justify-center items-start space-x-2">
 			<input class="checkbox" type="checkbox" required />
-			<p>I understand any inappropriate image/text can be removed or modified.</p>
+			<p>I understand the content is something to modification.</p>
 		</label>
 
 		<button class="btn variant-filled-primary w-52">
-			<p>${costAmount} (USD)</p>
+			<p>Submit</p>
 		</button>
 	</div>
 </form>

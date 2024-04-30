@@ -6,6 +6,25 @@ interface PostDate {
     day:number
 }
 
+interface Order{
+    tierID:string
+}
+
+interface QueueCount {
+    [productID:string]:number
+}
+
+interface Product {
+    id:string
+    name:string
+    price:number
+    thumb_url:string
+    description:string
+    currency:"USD"
+    queueCount:number
+    queueCountMax:number
+}
+
 interface ServerClientResponseError {
     url:           string,     
     status:        number,    
