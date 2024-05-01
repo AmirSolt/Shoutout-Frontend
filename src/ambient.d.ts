@@ -10,19 +10,16 @@ interface Order{
     tierID:string
 }
 
-interface QueueCount {
-    [productID:string]:number
+interface Transaction{
+    userName:string
+    date:Date
+    amount:number
 }
 
-interface Product {
-    id:string
-    name:string
-    price:number
-    thumb_url:string
-    description:string
-    currency:"USD"
-    queueCount:number
-    queueCountMax:number
+interface LandingPageData{
+    total_raised:number
+    highest_transactions:Transaction[]
+    recent_transactions:Transaction[]
 }
 
 interface ServerClientResponseError {

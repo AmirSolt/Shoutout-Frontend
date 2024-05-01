@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { Avatar } from '@skeletonlabs/skeleton';
 	import Transaction from './Transaction.svelte';
+	import { DollarSign } from 'lucide-svelte';
 	export let data;
 	let { characterName } = data;
 </script>
@@ -57,8 +58,9 @@
 		<label class="label">
 			<span class="text-lg">Amount</span>
 			<div class="input-group input-group-divider grid-cols-[auto_1fr_auto]">
-				<div class="input-group-shim">USD</div>
+				<div class="input-group-shim"><DollarSign /></div>
 				<input type="text" name="amount" placeholder="5.0" value="5.0" />
+				<div class="input-group-shim">USD</div>
 			</div>
 		</label>
 
@@ -70,7 +72,7 @@
 
 	<!-- ================= -->
 	<div class="card mb-4 p-4 space-y-4">
-		<span class="text-xl font-bold">Top Donors </span>
+		<span class="text-xl font-bold">Highest Transactions </span>
 		<!-- for each transaction -->
 		<Transaction />
 	</div>
