@@ -2,18 +2,23 @@ import { z } from "zod";
 import { stripe } from "$lib/stripe.server";
 import { OrderStatus } from "../lib/config";
 import { pb } from "$lib/pocketbase.server";
-import { fail, redirect } from "@sveltejs/kit";
+import { error, fail, redirect } from "@sveltejs/kit";
 import Stripe from "stripe";
 import {PUBLIC_DOMAIN} from '$env/static/public';
 import {PRIVATE_SERVER_URL} from '$env/static/private';
 
 
 const characterName = 'Juju the Clown';
+const maxTotalRaisedGoal = 5000
 
 export const load = async () => {
 
+
+
     return {
-        characterName
+        characterName,
+        pageData:await getLandingPageData(),
+        maxTotalRaisedGoal
     }
 };
 
@@ -92,3 +97,11 @@ async function createCheckoutSession(amount:number, userName:string, characterNa
     return checkoutSession
 }
 
+
+async function getLandingPageData():Promise<LandingPageData>{
+    const response = await fetch(`${PRIVATE_SERVER_URL}/api/landing-page?character_name=${characterName}`)
+    if(!response.ok){
+        throw error(500, "Failed to load the page. Please try again later")
+    }
+    return await response.json()
+}

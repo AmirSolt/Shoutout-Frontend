@@ -11,8 +11,8 @@ interface Order{
 }
 
 interface Transaction{
-    userName:string
-    date:Date
+    user_name:string
+    created:string
     amount:number
 }
 

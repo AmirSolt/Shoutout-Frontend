@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { Avatar } from '@skeletonlabs/skeleton';
-	import Transaction from './Transaction.svelte';
+	import Transaction from './TransactionTable.svelte';
 	import { DollarSign } from 'lucide-svelte';
+	import TransactionTable from './TransactionTable.svelte';
 	export let data;
-	let { characterName } = data;
+	let { characterName, pageData, maxTotalRaisedGoal } = data;
 </script>
 
 <div class="felx flex-col justify-center items-center p-4 md:max-w-4xl w-full">
@@ -37,10 +38,10 @@
 		</p>
 
 		<div>
-			<progress value={50} max={100} />
+			<progress value={pageData.total_raised} max={maxTotalRaisedGoal} />
 			<div class="flex flex-row justify-between items-center">
-				<p>Raised: $50</p>
-				<p>Goal: $100</p>
+				<p>Raised: ${pageData.total_raised}</p>
+				<p>Goal: ${maxTotalRaisedGoal}</p>
 			</div>
 		</div>
 	</div>
@@ -73,16 +74,26 @@
 	<!-- ================= -->
 	<div class="card mb-4 p-4 space-y-4">
 		<span class="text-xl font-bold">Highest Transactions </span>
-		<!-- for each transaction -->
-		<Transaction />
+		{#if pageData.highest_transactions.length > 0}
+			<TransactionTable transactions={pageData.highest_transactions} />
+		{:else}
+			<div class="card p-2 m-2">
+				<p>Empty</p>
+			</div>
+		{/if}
 	</div>
 	<!-- ================= -->
 
 	<!-- ================= -->
 	<div class="card mb-4 p-4 space-y-4">
 		<span class="text-xl font-bold">Recent Transactions </span>
-		<!-- for each transaction -->
-		<Transaction />
+		{#if pageData.recent_transactions.length > 0}
+			<TransactionTable transactions={pageData.recent_transactions} />
+		{:else}
+			<div class="card p-2 m-2">
+				<p>Empty</p>
+			</div>
+		{/if}
 	</div>
 	<!-- ================= -->
 </div>
